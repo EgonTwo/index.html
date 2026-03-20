@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Departure To From</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --border: #e0dcd5;
+    --text-primary: #1a1916;
+    --text-secondary: #7a776f;
+    --accent: #2c2c28;
+    --active-border: #1a1916;
+    --player-h: 160px;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── header ── */
+  header {
+    padding: 3rem 2.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  header p {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ── main layout ── */
+  main {
+    padding: 2.5rem 2.5rem calc(var(--player-h) + 5rem);
+  }
+
+  /* ── grid ── */
+  .track-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    border: 1px solid var(--border);
+    background: var(--border);
+  }
+
+  .track-card {
+    background: var(--surface);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.15s;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .track-card:hover {
+    background: #faf9f6;
+  }
+
+  .track-card.active {
+    background: var(--accent);
+  }
+
+  /* artwork */
+  .track-art {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(15%);
+    transition: filter 0.2s;
+  }
+
+  .track-card:hover .track-art { filter: grayscale(0%); }
+  .track-card.active .track-art { filter: grayscale(40%) brightness(0.7); }
+
+  /* play indicator overlay */
+  .track-overlay {
+    position: absolute;
+    inset: 0;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .track-card:hover .track-overlay { opacity: 1; }
+  .track-card.active .track-overlay { opacity: 1; }
+
+  .play-ring {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .play-ring svg {
+    width: 14px;
+    height: 14px;
+    fill: rgba(255,255,255,0.9);
+    margin-left: 2px;
+  }
+
+  .track-card.active .play-ring svg.icon-play { display: none; }
+  .track-card:not(.active) .play-ring svg.icon-stop { display: none; }
+
+  /* track info */
+  .track-info {
+    padding: 0.9rem 1rem 1rem;
+    flex: 1;
+  }
+
+  .track-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: 1.2;
+    transition: color 0.15s;
+  }
+
+  .track-card.active .track-title { color: #fff; }
+
+  .track-meta {
+    margin-top: 0.35rem;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.15s;
+  }
+
+  .track-card.active .track-meta { color: rgba(255,255,255,0.5); }
+
+  .track-price {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+  }
+
+  .track-card.active .track-price { color: rgba(255,255,255,0.45); }
+
+  /* ── sticky player bar ── */
+  #player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--player-h);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    z-index: 100;
+    transition: transform 0.3s ease;
+    transform: translateY(100%);
+  }
+
+  #player-bar.visible {
+    transform: translateY(0);
+  }
+
+  .player-label {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 1.2rem 1.5rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .player-label-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-label-sub {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .player-iframe-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #bc-player {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  .player-close {
+    width: 44px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: none;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .player-close:hover {
+    color: var(--text-primary);
+    background: var(--bg);
+  }
+
+  /* ── footer ── */
+  footer {
+    padding: 1.5rem 2.5rem;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  footer a:hover { color: var(--text-primary); }
+
+  @media (max-width: 600px) {
+    header { padding: 2rem 1.25rem 1.5rem; }
+    main { padding: 1.5rem 1.25rem calc(var(--player-h) + 4rem); }
+    .player-label { display: none; }
+    footer { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Departure To From</h1>
+  <p>Toronto · Instrumental Rock</p>
+</header>
+
+<main>
+  <div class="track-grid" id="track-grid"></div>
+</main>
+
+<footer>
+  <a href="https://departure-to-from.bandcamp.com" target="_blank">Bandcamp</a>
+  <span>All rights reserved</span>
+</footer>
+
+<div id="player-bar">
+  <div class="player-label">
+    <span class="player-label-title" id="player-title">—</span>
+    <span class="player-label-sub">Departure To From</span>
+  </div>
+  <div class="player-iframe-wrap">
+    <iframe id="bc-player" src="" seamless></iframe>
+  </div>
+  <button class="player-close" id="player-close" title="Close player">✕</button>
+</div>
+
+<script>
+const tracks = [
+  {
+    title: "Integers (trio version)",
+    slug: "integers-trio-version",
+    // BandCamp track embed uses the track ID — constructed from embed URL pattern
+    // Format: https://bandcamp.com/EmbeddedPlayer/track={trackId}/size=large/...
+    // We use the iframe src directly pointed at the track page for simplicity,
+    // but BandCamp's official embed iframe URL requires a numeric track ID.
+    // We use the standard embed URL with the artist + track slug approach via the
+    // "linkcol" transparent embed which works without a numeric ID:
+    embedSrc: "https://bandcamp.com/EmbeddedPlayer/track=1751975508/size=large/bgcol=ffffff/linkcol=333333/tracklist=false/artwork=small/transparent=true/",
+    art: "https://f4.bcbits.com/img/a3915562903_7.jpg",
+    released: "Mar 2026",
+    price: "$1.50 CAD"
+  },
+  {
+    title: "Needle Park",
+    slug: "needle-park",
+    embedSrc: "https://bandcamp.com/EmbeddedPlayer/track=2971554013/size=large/bgcol=ffffff/linkcol=333333/tracklist=false/artwork=small/transparent=true/",
+    art: "https://f4.bcbits.com/img/a1690743803_7.jpg",
+    released: "Feb 2024",
+    price: "$1.00 CAD"
+  },
+  {
+    title: "Open And Alive",
+    slug: "open-and-alive",
+    embedSrc: "https://bandcamp.com/EmbeddedPlayer/track=686401471/size=large/bgcol=ffffff/linkcol=333333/tracklist=false/artwork=small/transparent=true/",
+    art: "https://f4.bcbits.com/img/a2450020320_7.jpg",
+    released: "Feb 2024",
+    price: "$1.00 CAD"
+  },
+  {
+    title: "Pink Camouflage",
+    slug: "pink-camouflage",
+    embedSrc: "https://bandcamp.com/EmbeddedPlayer/track=1227988230/size=large/bgcol=ffffff/linkcol=333333/tracklist=false/artwork=small/transparent=true/",
+    art: "https://f4.bcbits.com/img/a2064831983_7.jpg",
+    released: "Feb 2024",
+    price: "$1.00 CAD"
+  }
+];
+
+// NOTE: The numeric track IDs in embedSrc above for Open And Alive and Pink Camouflage
+// are placeholders — see instructions in the README comment below.
+// The two confirmed IDs (from page source) are:
+//   integers-trio-version → 1751975508
+//   needle-park           → 2971554013
+// For the other two, follow the "Finding your track IDs" note at the bottom of this file.
+
+let activeIdx = null;
+const grid = document.getElementById('track-grid');
+const playerBar = document.getElementById('player-bar');
+const bcPlayer = document.getElementById('bc-player');
+const playerTitle = document.getElementById('player-title');
+const playerClose = document.getElementById('player-close');
+
+tracks.forEach((track, i) => {
+  const card = document.createElement('div');
+  card.className = 'track-card';
+  card.setAttribute('data-idx', i);
+  card.innerHTML = `
+    <img class="track-art" src="${track.art}" alt="${track.title}">
+    <div class="track-overlay">
+      <div class="play-ring">
+        <svg class="icon-play" viewBox="0 0 16 16"><polygon points="3,2 14,8 3,14"/></svg>
+        <svg class="icon-stop" viewBox="0 0 16 16"><rect x="3" y="2" width="4" height="12" rx="1"/><rect x="9" y="2" width="4" height="12" rx="1"/></svg>
+      </div>
+    </div>
+    <div class="track-info">
+      <div class="track-title">${track.title}</div>
+      <div class="track-meta">${track.released}</div>
+      <div class="track-price">${track.price}</div>
+    </div>
+  `;
+  card.addEventListener('click', () => selectTrack(i));
+  grid.appendChild(card);
+});
+
+function selectTrack(idx) {
+  if (activeIdx === idx) return;
+
+  document.querySelectorAll('.track-card').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.track-card[data-idx="${idx}"]`).classList.add('active');
+
+  activeIdx = idx;
+  const track = tracks[idx];
+
+  // Swap the src — this naturally stops any previous playback
+  bcPlayer.src = '';
+  requestAnimationFrame(() => {
+    bcPlayer.src = track.embedSrc;
+  });
+
+  playerTitle.textContent = track.title;
+  playerBar.classList.add('visible');
+}
+
+playerClose.addEventListener('click', () => {
+  playerBar.classList.remove('visible');
+  bcPlayer.src = '';
+  document.querySelectorAll('.track-card').forEach(c => c.classList.remove('active'));
+  activeIdx = null;
+});
+
+/*
+  ════════════════════════════════════════════════════════
+  FINDING YOUR TRACK IDs (for Open And Alive & Pink Camouflage)
+  ════════════════════════════════════════════════════════
+  1. Open the track page in your browser, e.g.:
+     https://departure-to-from.bandcamp.com/track/open-and-alive
+  2. Right-click → View Page Source
+  3. Search (Ctrl+F) for: "id": or "track_id"
+     You'll find a line like:  "id": 3456789012,
+     That number is your track ID.
+  4. Paste it into the embedSrc URL above, replacing the placeholder number.
+  ════════════════════════════════════════════════════════
+*/
+</script>
+
+</body>
+</html>
